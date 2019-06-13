@@ -1,0 +1,40 @@
+
+stages:
+  - build_installer
+  - upload_gitlab
+  - upload_github
+
+build_installer:
+  stage: build_installer
+  only:
+    - tags
+  image: ubuntu:18.04
+  script:
+    - bash make.sh all
+  artifacts:
+    expire_in: '1 hour'
+    paths:
+    - build/gnowledge
+    - build/gnowledge-core
+
+# Requires GITLAB_ACCESS_TOKEN secret variable
+upload_gitlab:
+  stage: upload_gitlab
+  only:
+    - tags
+  image: inetprocess/gitlab-release
+  script:
+    - gitlab-release build/gnowledge build/gnowledge-core
+
+# Requires GITHUB_TOKEN secret variable
+upload_github:
+  stage: upload_gitlab
+  only:
+    - tags
+  image: node
+  before_script:
+    - npm install --global release-it
+    - echo '{"github":{"release":true,"assets":["build/gnowledge","build/gnowledge-core"]}}' >.release-it.json
+    - git remote set-url origin https://github.com/gnos-project/gnos-gnowledge.git
+  script:
+    - release-it --non-interactive --no-npm --no-git --disable-metrics --increment $CI_COMMIT_TAG

@@ -1,0 +1,820 @@
+
+#   ▌  ▗ ▌          ▗
+#   ▌  ▄ ▛▀▖  ▞▀▌▌ ▌▄
+#   ▌  ▐ ▌ ▌  ▚▄▌▌ ▌▐
+#   ▀▀▘▀▘▀▀   ▗▄▘▝▀▘▀▘
+
+
+gui::XvfbRun () # $*:COMMAND
+{
+    local user="#1000"
+    if [[ "$1" == "-u" ]] ; then
+        user=$2
+        shift 2
+    fi
+
+    sudo --set-home -u $user \
+        xvfb-run --auto-servernum --server-num=2 \
+            "$@"
+}
+
+
+gui::XvfbRunKill () # $1:SECONDS $*:COMMAND
+{
+    local user="#1000"
+    if [[ "$1" == "-u" ]] ; then
+        user=$2
+        shift 2
+    fi
+
+    local timeout=$1
+    shift
+    local cmd=$1
+
+    gui::XvfbRun -u $user "$@" &
+    sleep $timeout
+
+    killall --signal 1 --exact $cmd
+    # killall --signal 2 --exact $cmd
+    sleep 5
+    killall --signal 9 --exact $cmd
+
+    return 0
+}
+
+
+gui::XvfbXfwmRunClose () # $1:SECONDS $*:COMMAND
+{
+    local user="#1000"
+    if [[ "$1" == "-u" ]] ; then
+        user=$2
+        shift 2
+    fi
+
+    local timeout=$1
+    shift
+    local cmd=$1
+
+    local xdisp=2
+    local xauth=$( sudo --set-home -u \#1000 mktemp )
+
+    # Install WM
+    local xfwm=1
+    if ! which xfwm4 &>/dev/null ; then
+        xfwm=0
+        apt::AddPackages xfwm4
+    fi
+
+    # Start WM
+    local xpid
+    sudo --set-home -u $user \
+        xvfb-run --server-num=$xdisp --auth-file=$xauth \
+            env -u SESSION_MANAGER -u DBUS_SESSION_BUS_ADDRESS \
+                xfwm4 &
+    xpid=$!
+    sleep 5
+    ps -p $xpid
+    sys::Chk
+
+    # Start command
+    local cpid
+    sudo --set-home -u $user DISPLAY=:$xdisp XAUTHORITY=$xauth \
+        "$@" &
+    cpid=$!
+    sleep $timeout
+
+    # Close all windows
+    local wids=$( sudo --set-home -u $user DISPLAY=:$xdisp XAUTHORITY=$xauth wmctrl -l | awk '{print $1}' )
+    if [[ -z "$wids" ]] ; then
+        # DBG
+        ps -p $cpid
+        sudo --set-home -u $user DISPLAY=:$xdisp XAUTHORITY=$xauth wmctrl -l
+        sys::Die "No window found"
+    fi
+    for w in $wids ; do
+        sudo --set-home -u $user DISPLAY=:$xdisp XAUTHORITY=$xauth wmctrl -l
+        sudo --set-home -u $user DISPLAY=:$xdisp XAUTHORITY=$xauth wmctrl -i -c $w
+        sleep 5
+        sudo --set-home -u $user DISPLAY=:$xdisp XAUTHORITY=$xauth wmctrl -l
+    done
+
+    # Kill command
+    sys::RecursiveKill $cpid
+
+    # Kill WM
+    sys::RecursiveKill $xpid
+
+    # Uninstall WM
+    [[ $xfwm -eq 0 ]] && apt::RemovePackages xfwm4
+
+    return 0
+}
+
+
+gui::RefreshDesktop ()
+{
+    xdotool key Super_L+f key F5
+}
+
+
+gui::RestartShell ()
+{
+    dbus-send --type=method_call --dest=org.gnome.Shell \
+        /org/gnome/Shell \
+        org.gnome.Shell.Eval \
+        string\:'global.reexec_self()'
+}
+
+
+gui::GetStringArray () # $*:STRING
+{
+    {
+        local cnt=0 str="["
+        for item in "$@" ; do
+            [[ $cnt -ne 0 ]] && str="${str}, "
+            str="${str}'$item'" # TODO JSON escape single quote ?
+            ((cnt++))
+        done
+        str="${str}]"
+    } 2>/dev/null
+
+    echo -n "$str"
+}
+
+
+gui::SetDefaultAppForMimetypes () # [--user] $1:DESKTOP $*:MIMETYPE ...
+{
+    # TIP: XDG_UTILS_DEBUG_LEVEL=3 xdg-mime query default application/pdf
+
+    local dst
+    if [[ "$UBUNTU_RELEASE" == "xenial" ]] ; then
+        dst=/usr/local/share/applications/mimeapps.list
+    else
+        dst=/usr/local/share/applications/defaults.list
+    fi
+
+    if [[ "$1" == "--user" ]] ; then
+        shift
+        dst="$HOME/.config/mimeapps.list"
+        sys::Touch "$dst"
+    fi
+
+    [[ $# -gt 1 ]] || return
+
+    local app="$( basename "$1" .desktop ).desktop"
+    shift
+    for mime in $* ; do
+        sys::Crudini "$dst" \
+            "Default Applications" \
+            "$mime" \
+            "$app"
+    done
+}
+
+
+gui::AddEditor () # $1:DOT_DESKTOP $2:NAME $3:TEXT
+{
+    local ini=$1 name=$2 txt=$3
+    [[ -z "$txt" ]] && txt="Edit $name"
+
+    local actions=/usr/share/gnome/file-manager/actions
+    [[ -d "$actions" ]] || return
+
+    sys::Write <<EOF $actions/$name.desktop
+[Desktop Entry]
+Type=Action
+Name=$txt
+Icon=$( crudini --get "$ini" "Desktop Entry" Icon )
+TargetLocation=true
+ToolbarLabel=$txt
+Profiles=profile-zero;
+
+[X-Action-Profile profile-zero]
+Name=default
+Exec=$( crudini --get "$ini" "Desktop Entry" Exec )
+MimeTypes=$( crudini --get "$ini" "Desktop Entry" MimeType )
+EOF
+
+}
+
+
+gui::AddKeybinding () # $1:NAME $2:BINDING $3:COMMAND
+{
+    [[ $# -eq 3 ]] || return
+
+    local conf=/usr/share/glib-2.0/schemas/$PRODUCT_NAME-custom-keybindings.conf
+
+       awk -v p="$1" '$0==p{x=1}END{if(!x)exit 1;}' "$conf" \
+    || echo "$1" >>"$conf"
+
+    local strArr=$( gui::GetStringArray \
+                        $( awk -v p=/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ \
+                            'NF>0{print p $0 "/"}' \
+                            "$conf"
+                         )
+                  )
+    sys::Write <<EOF /usr/share/glib-2.0/schemas/$PRODUCT_NAME-custom-keybindings.gschema.override
+# AUTO-GENERATED BY $FUNCNAME
+[org.gnome.settings-daemon.plugins.media-keys]
+custom-keybindings=$strArr
+EOF
+
+    glib-compile-schemas /usr/share/glib-2.0/schemas/
+
+    # DEV relocatables schemes not reachable from Vendor Overrides
+    # WORKAROUND Populate dconf local Profile keyfile
+    # ALT POST gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybindings:org/gnome/settings-daemon/plugins/media-keys/custom-keybindings:$1 KEY VALUE
+    sys::Write <<EOF "/etc/dconf/db/local.d/keybindings-$1.key"
+# AUTO-GENERATED BY $FUNCNAME
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/$1]
+name='$1'
+binding='$2'
+command='$3'
+EOF
+    rm -rfv /etc/dconf/db/local 2>/dev/null
+    dconf update
+}
+
+
+gui::HideApps () # $1:DESKTOP
+{
+    local name
+    for i in $* ; do
+
+        name="$( basename $i .desktop )"
+        sys::Write "/usr/local/share/applications/$name.desktop" \
+            <<<"[Desktop Entry]"
+
+        # DEV: Remove from app-folders
+
+        local cnf
+        for conf in "/usr/share/glib-2.0/schemas/$PRODUCT_NAME-app-folders-"*.conf ; do
+            if grep -qE '^'"$name"'\.' "$conf" ; then
+                sys::SedInline '/^'"$name"'\./d' "$conf"
+                cnf="$( basename "$conf" .conf)"
+                gui::AddAppFolder "${cnf#$PRODUCT_NAME-app-folders-}"
+            fi
+        done
+
+    done
+}
+
+
+gui::SetAppIcon () # $1:DESKTOP $2:ICON-NAME
+{
+    gui::SetAppProp "$1" Icon "$2"
+}
+
+gui::SetAppName () # $1:DESKTOP $2:ICON-NAME
+{
+    gui::SetAppProp "$1" Name "$2"
+}
+
+gui::SetAppProp () # $1:DESKTOP $2:PROP_NAME $3:PROP_VALUE
+{
+    local srcdsk
+    local name=$( basename "$1" .desktop)
+
+    if   [[ $1 =~ / ]] && [[ -f "$1" ]]; then
+        srcdsk="$1"
+    elif [[ -f "/usr/local/share/applications/$name.desktop" ]] ; then
+        srcdsk="/usr/local/share/applications/$name.desktop"
+    elif [[ -f "/usr/share/applications/$name.desktop" ]] ; then
+        srcdsk="/usr/share/applications/$name.desktop"
+    else
+        sys::Die "Unknown .desktop launcher $1"
+    fi
+
+    local dstdsk
+    dstdsk="/usr/local/share/applications/$name.desktop"
+
+    if [[ "$srcdsk" != "$dstdsk" ]] ; then
+        sys::Copy "$srcdsk" "$dstdsk"
+    fi
+
+    sys::Crudini "$dstdsk" \
+        "Desktop Entry" \
+        "$2" \
+        "$3"
+}
+
+
+gui::AddFavoriteApp () # $1:NAME
+{
+    local conf=/usr/share/glib-2.0/schemas/$PRODUCT_NAME-favorite-apps.conf
+
+    if [[ -n "$1" ]]; then
+           awk -v p="$1.desktop" '$0==p{x=1}END{if(!x)exit 1;}' "$conf" \
+        || echo "$1.desktop" >>"$conf"
+    fi
+
+    local strArr=$( gui::GetStringArray $( cat "$conf" ) )
+    sys::Write <<EOF /usr/share/glib-2.0/schemas/$PRODUCT_NAME-favorite-apps.gschema.override
+# AUTO-GENERATED BY $FUNCNAME
+[org.gnome.shell]
+favorite-apps=$strArr
+EOF
+    glib-compile-schemas /usr/share/glib-2.0/schemas/
+
+}
+
+
+gui::AddAptIndicatorIgnore () # $*:APP
+{
+    [[ $# -ge 1 ]] || return
+    
+    local conf=/usr/share/glib-2.0/schemas/$PRODUCT_NAME-apt-indicator-ignore.conf
+    local done=0
+
+    for pkg in $* ; do
+        if ! awk -v p="$pkg" '$0==p{x=1}END{if(!x)exit 1;}' "$conf" 2>/dev/null ; then
+            echo "$pkg" >>"$conf"
+            done=1
+        fi
+    done
+
+    [[ $done -eq 0 ]] && return
+
+    local str=$( str::JoinStringByDelimiter "; " $( sort "$conf" ) )
+    sys::Write <<EOF /usr/share/glib-2.0/schemas/$PRODUCT_NAME-apt-indicator-ignore.gschema.override
+# AUTO-GENERATED BY $FUNCNAME
+[org.gnome.shell.extensions.apt-update-indicator]
+ignore-list='$str'
+EOF
+        glib-compile-schemas /usr/share/glib-2.0/schemas/
+}
+
+
+gui::AddAppFolder () # $1:NAME $*:APP
+{
+    # ALT: gnome-catgen # https://github.com/prurigro/gnome-catgen
+
+    [[ $# -ge 1 ]] || return
+
+    local fname=$1
+    local name=$( str::SanitizeString "$fname" )
+    shift
+
+    # Set org.gnome.desktop.app-folders.folder-children
+    local conf=/usr/share/glib-2.0/schemas/$PRODUCT_NAME-app-folders.conf
+
+    local done=0
+
+    if ! awk -v p="$name" '$0==p{x=1}END{if(!x)exit 1;}' "$conf" 2>/dev/null ; then
+        echo "$name" >>"$conf"
+
+        local strArr=$( gui::GetStringArray $( sort "$conf" ) )
+        sys::Write <<EOF /usr/share/glib-2.0/schemas/$PRODUCT_NAME-app-folders.gschema.override
+# AUTO-GENERATED BY $FUNCNAME
+[org.gnome.desktop.app-folders]
+folder-children=$strArr
+EOF
+        glib-compile-schemas /usr/share/glib-2.0/schemas/
+        done=1
+    fi
+
+    # Set org.gnome.desktop.app-folders.folders.FOLDER.*
+    local fconf="/usr/share/glib-2.0/schemas/$PRODUCT_NAME-app-folders-$name.conf"
+
+    for app in "$@" ; do
+        app="$( basename "$app" .desktop )"
+
+           awk -v p="$app.desktop" '$0==p{x=1}END{if(!x)exit 1;}' "$fconf" 2>/dev/null \
+        && continue
+
+        echo "$app.desktop" >>"$fconf"
+        done=1
+    done
+
+    [[ $done -eq 1 ]] || return
+
+
+    local fstrArr=$( gui::GetStringArray $( cat "$fconf" ) )
+
+    # DEV relocatables schemes not reachable from Vendor Overrides
+    # WORKAROUND Use dconf with keyfile
+    # Populate dconf local Profile keyfile
+    sys::Write <<EOF "/etc/dconf/db/local.d/appfolder-$name.key"
+# AUTO-GENERATED BY $FUNCNAME
+[org/gnome/desktop/app-folders/folders/$name]
+name='$fname'
+apps=$fstrArr
+EOF
+    rm -rfv /etc/dconf/db/local 2>/dev/null
+    dconf update
+}
+
+
+gui::DisableSearchProvider () # $1:NAME
+{
+    local conf=/usr/share/glib-2.0/schemas/$PRODUCT_NAME-disabled-search-providers.conf
+
+       awk -v p="$1.desktop" '$0==p{x=1}END{if(!x)exit 1;}' "$conf" 2>/dev/null \
+    || echo "$1.desktop" >>"$conf"
+
+    local strArr=$( gui::GetStringArray $( cat "$conf" ) )
+    sys::Write <<EOF /usr/share/glib-2.0/schemas/$PRODUCT_NAME-disabled-search-providers.gschema.override
+# AUTO-GENERATED BY $FUNCNAME
+[org.gnome.desktop.search-providers]
+disabled=$strArr
+EOF
+    glib-compile-schemas /usr/share/glib-2.0/schemas/
+}
+
+
+
+gui::AddShellExtensionsByZip () # [--nodefault] $*:ZIP_PATH
+{
+    local nodefault
+    if [[ "$1" == "--nodefault" ]] ; then
+        nodefault=$1
+        shift
+    fi
+
+    for tempzip in "$@" ; do
+
+        local tempdir=$( mktemp -d )
+
+        unzip $tempzip -d $tempdir
+
+        local candidate=$( find $tempdir/ -maxdepth 3 -name metadata.json )
+
+           [[ -f "$candidate" ]] \
+        || sys::Die "Failed to identify extension $tempzip"
+
+        local extname="$( sys::Jq .uuid $candidate )"
+
+        if [[ -n "$extname" ]] ; then
+            mkdir -p "/usr/share/gnome-shell/extensions/$extname"
+            cp -r "$( dirname "$candidate" )"/* \
+                "/usr/share/gnome-shell/extensions/$extname"
+            sys::Chk
+        else
+            sys::Die "Failed to get extension uuid"
+        fi
+
+        rm -rf "$tempdir" # "$tempzip"
+    done
+
+    gui::FixShellExtension $nodefault "$extname"
+
+}
+
+
+gui::AddShellExtensionsByUrl () # [--nodefault] $*:URL
+{
+    local nodefault
+    if [[ "$1" == "--nodefault" ]] ; then
+        nodefault=$1
+        shift
+    fi
+
+    for exturl in "$@" ; do
+        local tempzip=$( mktemp )
+        net::Download "$exturl" $tempzip
+        gui::AddShellExtensionsByZip $nodefault $tempzip
+        rm -rf "$tempzip"
+    done
+}
+
+
+gui::AddShellExtensionsById () # [--nodefault] $*:ID
+{
+    local nodefault
+    if [[ "$1" == "--nodefault" ]] ; then
+        nodefault=$1
+        shift
+    fi
+
+    # Dep: installer
+    if ! [[ -x /usr/bin/gnome-shell-extension-installer ]] ; then
+        net::Download \
+            "https://github.com/ianbrunelli/gnome-shell-extension-installer/raw/master/gnome-shell-extension-installer" \
+            /usr/bin/gnome-shell-extension-installer
+        chmod +x /usr/bin/gnome-shell-extension-installer
+    fi
+
+    for i in $*; do
+
+        local tmpdir=$( mktemp -d)
+        pushd "$tmpdir"
+
+        if [[ "$UBUNTU_RELEASE" == "xenial" ]] ; then
+            gnome-shell-extension-installer --no-install --yes $i 3.20
+        else
+            gnome-shell-extension-installer --no-install --yes $i 3.28
+        fi
+        sys::Chk
+
+        local extPath=$( find  -maxdepth 1 -iname "*.shell-extension.zip" )
+        if [[ ! -f "$extPath" ]] ; then
+            sys::Die "Missing extension $i"
+            popd
+            rm -rf "$tmpdir"
+            return 1
+        fi
+
+        gui::AddShellExtensionsByZip $nodefault "$extPath"
+
+        popd
+        rm -rf "$tmpdir"
+    done
+
+}
+
+
+gui::FixShellExtension () # [--nodefault] $1:EXTNAME
+{
+    local nodefault
+    if [[ "$1" == "--nodefault" ]] ; then
+        nodefault=$1
+        shift
+    fi
+    local name=$1
+
+    # FIX perms
+    find "/usr/share/gnome-shell/extensions/$name" "$HOME/.local/share/gnome-shell/extensions/$name" \
+        -type d -exec chmod 0755 {} \;
+    find "/usr/share/gnome-shell/extensions/$name" "$HOME/.local/share/gnome-shell/extensions/$name" \
+        -type f -exec chmod 0644 {} \;
+    find "/usr/share/gnome-shell/extensions/$name" "$HOME/.local/share/gnome-shell/extensions/$name" \
+        -type f -name "*.py"  -exec chmod 0755 {} \; #
+    find "/usr/share/gnome-shell/extensions/$name" "$HOME/.local/share/gnome-shell/extensions/$name" \
+        -type f -name "*.sh"  -exec chmod 0755 {} \; # GSConnect
+    find "/usr/share/gnome-shell/extensions/$name" "$HOME/.local/share/gnome-shell/extensions/$name" \
+        -type f -name "*.log" -exec chmod 0777 {} \; # CustomCorner
+
+    # FIX Install extension schemas
+    cp  {$HOME/.local,/usr}/share/gnome-shell/extensions/"$name"/schema{,s}/*.gschema.xml \
+        /usr/share/glib-2.0/schemas/
+
+    # Enable extension
+    if [[ -z "$nodefault" ]] ; then
+
+        local conf=/usr/share/glib-2.0/schemas/$PRODUCT_NAME-extensions.conf
+
+        if ! awk -v p="$name" '$0==p{x=1}END{if(!x)exit 1;}' "$conf" 2>/dev/null ; then
+
+            sys::Write --append $conf <<<$name
+
+            local strArr=$( gui::GetStringArray $( sort "$conf" ) )
+            sys::Write <<EOF /usr/share/glib-2.0/schemas/$PRODUCT_NAME-extensions.gschema.override
+[org.gnome.shell]
+disable-extension-version-validation=true
+enabled-extensions=$strArr
+EOF
+        fi
+    fi
+
+    glib-compile-schemas /usr/share/glib-2.0/schemas/
+
+# ls -la /home/user/.cache/dconf/user # DEBUG
+}
+
+
+
+# TIP: /usr/lib/gnome-shell/libgnome-shell.so /usr/share/gnome-shell/gnome-shell-theme.gresource
+gui::GresourceToDir() # $1:G_RESSOURCE $2:DEST_DIR $3:G_RESSOURCE_PREFIX
+{
+    local src=$1 dst=$2
+
+    mkdir -p "$dst"
+
+    local dstfile
+    while IFS= read -r file || [[ -n $file ]] ; do
+        dstfile="$dst${file#$3}"
+        mkdir -p "$( dirname "$dstfile" )"
+        gresource extract "$src" "$file" >"$dstfile"
+    done < <( gresource list "$src" )
+}
+
+
+gui::DirToGresource() # $1:SRC_DIR $2:G_RESSOURCE_FILE $3:G_RESSOURCE_PREFIX
+{
+    local src=$1
+
+    # GEN XML
+    local xml=$( mktemp --suffix=.gresource.xml )
+    cat <<EOF >"$xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="${3%/}">
+EOF
+    while IFS= read -r -d $'\0' file || [[ -n $file ]] ; do
+        echo '    <file>'"${file#$src/}"'</file>' >>"$xml"
+    done < <( find $src -type f \
+                -a -not -path "*/extensions/*" \
+                -a -not -path "*/extensions" \
+                -print0
+            )
+    echo '  </gresource>' >>"$xml"
+    echo '</gresources>' >>"$xml"
+
+    # GEN gresource
+    glib-compile-resources \
+        --target="$2" \
+        --sourcedir="$src" \
+        --generate \
+        "$xml"
+
+    # CLEAN
+    rm "$xml"
+}
+
+
+gui::AddSwitch () # $1:NAME $2:CMD_DETECT $3:CMD_ON $4:CMD_OFF [ $5:MENU_ID [ATTR=VAL]... ]
+{
+    [[ -f "$HOME/.config/quicktoggler.json" ]] || return
+
+    local name=$1 cdet=$2 con=$3 coff=$4 pos=0 more
+    [[ $# -ge 5 ]] && pos=$5
+    shift 5
+    for pair in "$@" ; do
+        more=", \"${pair%%=*}\": \"${pair##*=}\""
+    done
+
+    sys::JqInline \
+        '.entries['"$pos"'].entries |= .+ [{ "title":"'"$name"'", "type":"toggler", "command_on": "'"$con"'", "command_off": "'"$coff"'", "detector": "'"$cdet"'" '"$more"' }] | .entries['"$pos"'].entries |= sort_by(.title)' \
+        "$HOME/.config/quicktoggler.json"
+
+}
+
+
+gui::AddSystemdSwitch () # $1:NAME $2:UNIT [ $3:MENU_ID [ATTR=VAL]... ]
+{
+    [[ -f "$HOME/.config/quicktoggler.json" ]] || return
+
+    local name=$1 unit=$2 pos=0 more
+    [[ $# -ge 3 ]] && pos=$3
+    shift 3
+    for pair in "$@" ; do
+        more=", \"${pair%%=*}\": \"${pair##*=}\""
+    done
+
+    sys::JqInline \
+        '.entries['"$pos"'].entries |= .+ [{ "title":"'"$name"'",  "type":"systemd_mask", "unit":"'"$unit"'" '"$more"' }] | .entries['"$pos"'].entries |= sort_by(.title)' \
+        "$HOME/.config/quicktoggler.json"
+}
+
+gui::AddExtensionSwitch () # $1:NAME $2:EXT_NAME [ $3:MENU_ID [ATTR=VAL]... ]
+{
+    [[ -f "$HOME/.config/quicktoggler.json" ]] || return
+
+    local name=$1 ext=$2 pos=0 more
+    [[ $# -ge 3 ]] && pos=$3
+    shift 3
+    for pair in "$@" ; do
+        more=", \"${pair%%=*}\": \"${pair##*=}\""
+    done
+
+    sys::JqInline \
+        '.entries['"$pos"'].entries |= .+ [{ "title":"'"$name"'",  "type":"gnome_shell_extension", "name":"'"$ext"'" '"$more"' }] | .entries['"$pos"'].entries |= sort_by(.title)' \
+        "$HOME/.config/quicktoggler.json"
+}
+
+
+gui::AddDconfBoolSwitch () # $1:NAME $2:PATH [ $3:MENU_ID ]
+{
+    [[ -f "$HOME/.config/quicktoggler.json" ]] || return
+
+    local pos=0
+    [[ $# -eq 3 ]] && pos=$3
+
+       sys::JqInline \
+        '.entries['"$pos"'].entries |= .+ [{ "title":"'"$1"'", "type":"dconf_bool", "path":"'"$2"'"}] | .entries['"$pos"'].entries |= sort_by(.title)' \
+        "$HOME/.config/quicktoggler.json"
+}
+
+
+gui::AddGsettingsBoolSwitch () # $1:NAME $2:PATH [ $3:MENU_ID ]
+{
+    [[ -f "$HOME/.config/quicktoggler.json" ]] || return
+
+    local pos=0
+    [[ $# -eq 3 ]] && pos=$3
+
+    sys::JqInline '.entries['"$pos"'].entries |= .+ [{ "title":"'"$1"'", "type":"gsettings_bool", "path":"'"$2"'" }] | .entries['"$pos"'].entries |= sort_by(.title)' \
+          "$HOME/.config/quicktoggler.json"
+
+}
+
+
+# UNUSED
+gui::AddGsettingsIntSwitch () # $1:NAME $2:PATH $3:VAL_ON [ $4:MENU_ID ]
+{
+    [[ -f "$HOME/.config/quicktoggler.json" ]] || return
+
+    local pos=0
+    [[ $# -eq 4 ]] && pos=$4
+
+    sys::JqInline '.entries['"$pos"'].entries |= .+ [{ "title":"'"$1"'", "type":"gsettings_int", "path":"'"$2"'", "value":"'"$3"'" }] | .entries['"$pos"'].entries |= sort_by(.title)' \
+          "$HOME/.config/quicktoggler.json"
+
+}
+
+
+# UNUSED
+gui::AddGsettingsStringSwitch () # $1:NAME $2:PATH $3:VAL_ON [ $4:MENU_ID ]
+{
+    [[ -f "$HOME/.config/quicktoggler.json" ]] || return
+
+    local pos=0
+    [[ $# -eq 4 ]] && pos=$4
+    sys::JqInline \
+        '.entries['"$pos"'].entries |= .+ [{ "title":"'"$1"'", "type":"gsettings_string", "path":"'"$2"'", "value":"'"$3"'" }] | .entries['"$pos"'].entries |= sort_by(.title)' \
+        "$HOME/.config/quicktoggler.json"
+}
+
+
+gui::AddPkexecPolicy () # $1:PATH $2:ID
+{
+    local path=$1
+    local id=$2
+    # local url=$3
+    local name=$( basename "$path" )
+    # local name=${id##*.}
+
+    sys::Write <<EOF /usr/share/polkit-1/actions/$id.policy
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN" "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+     <action id="$id">
+         <message>Authentication is required to run $name as root.</message>
+         <defaults>
+             <allow_any>auth_admin</allow_any>
+             <allow_inactive>auth_admin</allow_inactive>
+             <allow_active>auth_admin_keep</allow_active>
+         </defaults>
+         <annotate key="org.freedesktop.policykit.exec.path">$path</annotate>
+         <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+    </action>
+</policyconfig>
+EOF
+}
+
+
+gui::DisableDbusServices () # $*:NAME
+{
+    local dbusDisabled
+
+    for service in $* ; do
+
+        dbusDisabled=$( echo -e "[D-BUS Service]\nName=$service\nExec=/bin/false\n" )
+
+        # USER
+          echo "$dbusDisabled" \
+        | sys::Write $HOME/.local/share/dbus-1/services/$service.service  1000:1000
+
+        # SKEL
+          echo "$dbusDisabled" \
+        | sys::Write /etc/skel/.local/share/dbus-1/services/$service.service
+
+    done
+}
+
+
+gui::FixDkmsAllModules ()
+{
+    which dkms &>/dev/null || apt::AddPackages dkms
+
+    dkms status # DEBUG
+
+    local modulesList=$(
+          dkms status \
+        | awk '$NF=="added"{ print substr( $0, 1, index($0,",")-1 ) }'
+        )
+
+    for module in $modulesList ; do
+        gui::FixDkmsModule $module
+    done
+}
+
+
+gui::FixDkmsModule () # $1:MODULE
+{
+    which dkms &>/dev/null || apt::AddPackages dkms
+
+    dkms status # DEBUG
+
+    local moduleVersion=$( dkms status | awk -F', |:' -v p=$1 '$1==p{print $2}' )
+
+    local kernelVersionList=$(
+          find /boot/ -mindepth 1 -maxdepth 1 -name "vmlinuz-*" \
+        | cut -d- -f2- )
+
+    [[ -n "$moduleVersion" ]] || sys::Die "Failed to get $1 dkms module version"
+
+    for kernelVersion in $kernelVersionList ; do
+
+        dkms build -m $1 -v $moduleVersion -k $kernelVersion
+        sys::Chk
+        dkms mkdeb -m $1 -v $moduleVersion -k $kernelVersion
+        sys::Chk
+
+        apt::AddLocalPackages /var/lib/dkms/$1/$moduleVersion/deb/*.deb # DEV: $1-dkms_*.deb
+        sys::Chk
+    done
+
+    dkms status # DEBUG
+}
+
