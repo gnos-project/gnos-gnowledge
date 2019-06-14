@@ -2698,13 +2698,13 @@ cli::Softether ()
 [Unit]
 Description=SoftEther VPN Server daemon
 After=network.target
-# ConditionPathExists=!/usr/libexec/vpnserver/do_not_run
+# ConditionPathExists=!/usr/libexec/softether/vpnserver/do_not_run
 
 [Service]
 Type=forking
-# EnvironmentFile=-/usr/libexec/vpnserver
-ExecStart=/usr/libexec/vpnserver/vpnserver start
-ExecStop=/usr/libexec/vpnserver/vpnserver stop
+# EnvironmentFile=-/usr/libexec/softether/vpnserver
+ExecStart=/usr/libexec/softether/vpnserver/vpnserver start
+ExecStop=/usr/libexec/softether/vpnserver/vpnserver stop
 KillMode=process
 Restart=on-failure
 # Hardening
@@ -2712,7 +2712,7 @@ PrivateTmp=yes
 ProtectHome=yes
 ProtectSystem=full
 ReadOnlyDirectories=/
-ReadWriteDirectories=-/usr/libexec/vpnserver
+ReadWriteDirectories=-/usr/libexec/softether/vpnserver
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW CAP_SYS_NICE CAP_SYS_ADMIN CAP_SETUID
 
 
