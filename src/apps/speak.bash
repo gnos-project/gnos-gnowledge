@@ -35,6 +35,9 @@ app::TweetTray ()
 
 app::Wire_NONFREE ()
 {
+    Meta --desc "Wire client" \
+         --no-default true
+
     apt::AddSource signal  \
         "[arch=amd64] https://wire-app.wire.com/linux/debian"  \
         "stable main"  \
