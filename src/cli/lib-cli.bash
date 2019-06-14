@@ -2679,38 +2679,32 @@ cli::Softether ()
 
     which vpncmd && return
 
-    # apt::AddPpaPackages bnd-acc/softether-vpn
-    # apt::AddPpaPackages fsgmhoward/softethervpn \
-
     if [[ "$UBUNTU_RELEASE" == "xenial" ]] ; then
         apt::AddPpaPackages ondrej/php libssl1.1
-        # ALT apt::AddPpaPackages blubolt/softether \
-        apt::AddPpaPackages ast/softether-test \
-            softether-vpnclient \
-            softether-vpnserver \
-            softether-vpncmd
     else # BIONIC
         apt::AddRemotePackages \
             https://launchpad.net/ubuntu/+archive/primary/+files/libreadline6_6.3-8ubuntu2_amd64.deb
         # ALT http://ppa.launchpad.net/kxstudio-debian/gcc5-deps/ubuntu xenial/main
-        apt::AddPpaPackages --release xenial ast/softether-test \
-            softether-vpnclient \
-            softether-vpnserver \
-            softether-vpncmd
     fi
+    apt::AddPpaPackages paskal-07/softethervpn \
+        softether-common \
+        softether-vpnclient \
+        softether-vpnserver \
+        softether-vpncmd
+
     update-rc.d softether-vpnserver remove
 
     sys::Write <<'EOF' /lib/systemd/system/vpnserver.service
 [Unit]
 Description=SoftEther VPN Server daemon
 After=network.target
-ConditionPathExists=!/opt/vpnserver/do_not_run
+# ConditionPathExists=!/usr/libexec/vpnserver/do_not_run
 
 [Service]
 Type=forking
-EnvironmentFile=-/opt/vpnserver
-ExecStart=/opt/vpnserver/vpnserver start
-ExecStop=/opt/vpnserver/vpnserver stop
+# EnvironmentFile=-/usr/libexec/vpnserver
+ExecStart=/usr/libexec/vpnserver/vpnserver start
+ExecStop=/usr/libexec/vpnserver/vpnserver stop
 KillMode=process
 Restart=on-failure
 # Hardening
@@ -2718,7 +2712,7 @@ PrivateTmp=yes
 ProtectHome=yes
 ProtectSystem=full
 ReadOnlyDirectories=/
-ReadWriteDirectories=-/opt/vpnserver
+ReadWriteDirectories=-/usr/libexec/vpnserver
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW CAP_SYS_NICE CAP_SYS_ADMIN CAP_SETUID
 
 
@@ -2730,13 +2724,13 @@ EOF
 [Unit]
 Description=SoftEther VPN Client daemon
 After=network.target
-ConditionPathExists=!/opt/vpnclient/do_not_run
+# ConditionPathExists=!/usr/libexec/softether/vpnclient/do_not_run
 
 [Service]
 Type=forking
-EnvironmentFile=-/opt/vpnclient
-ExecStart=/opt/vpnclient/vpnclient start
-ExecStop=/opt/vpnclient/vpnclient stop
+# EnvironmentFile=-/usr/libexec/softether/vpnclient
+ExecStart=/usr/libexec/softether/vpnclient/vpnclient start
+ExecStop=/usr/libexec/softether/vpnclient/vpnclient stop
 KillMode=process
 Restart=on-failure
 
@@ -2745,7 +2739,7 @@ PrivateTmp=yes
 ProtectHome=yes
 ProtectSystem=full
 ReadOnlyDirectories=/
-ReadWriteDirectories=-/opt/vpnclient
+ReadWriteDirectories=-/usr/libexec/softether/vpnclient
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW CAP_SYS_NICE CAP_SYS_ADMIN CAP_SETUID
 
 [Install]
@@ -2754,11 +2748,6 @@ EOF
 
     systemctl mask    vpnserver.service
     systemctl mask    vpnclient.service
-
-    # TIP: vpngate.net scrappers
-    # https://github.com/Dragon2fly/vpngate-with-proxy
-    # http://www.webupd8.rog/2017/02/easily-use-free-vpn-servers-from-vpn.html
-    # https://gist.github.com/Lazza/bbc15561b65c16db8ca8
 
     # TODO Server profile: Init
     # ServerPasswordSet secretServer # Allows remote config
