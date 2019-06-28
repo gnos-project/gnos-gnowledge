@@ -514,7 +514,7 @@ EOF
     gui::AddShellExtensionsByUrl \
         "https://github.com/Tomha/gnome-shell-extension-workspace-switcher/archive/master.zip"
     sys::Write <<EOF --append "$POSTINST_USER_SESSION_SCRIPT"
-gsettings set org.gnome.shell.extensions.workspace-switcher index 2
+gsettings set org.gnome.shell.extensions.workspace-switcher index 3
 gsettings set org.gnome.shell.extensions.workspace-switcher show-names false
 gsettings set org.gnome.shell.extensions.workspace-switcher click-action 'POPUP'
 gsettings set org.gnome.shell.extensions.workspace-switcher background-colour-active '#00000000'
@@ -659,7 +659,7 @@ EOF
     sed -E -i 's#gnome-system-monitor(\.desktop)+#htop\1#' \
         /usr/share/gnome-shell/extensions/system-monitor@paradoxxx.zero.gmail.com/extension.js
 
-    sys::Write <<EOF --append "$POSTINST_USER_SESSION_SCRIPT"
+    sys::Write <<EOF --append "$POSTINST_USER_START_SCRIPT"
 gsettings set org.gnome.shell.extensions.system-monitor background '#${THEME_COLOR_BACKGD_HEX}00'
 gsettings set org.gnome.shell.extensions.system-monitor center-display false
 gsettings set org.gnome.shell.extensions.system-monitor compact-display true
@@ -667,7 +667,7 @@ gsettings set org.gnome.shell.extensions.system-monitor icon-display false
 gsettings set org.gnome.shell.extensions.system-monitor show-tooltip false
 
 gsettings set org.gnome.shell.extensions.system-monitor cpu-display true
-gsettings set org.gnome.shell.extensions.system-monitor cpu-graph-width 64
+gsettings set org.gnome.shell.extensions.system-monitor cpu-graph-width 40
 gsettings set org.gnome.shell.extensions.system-monitor cpu-individual-cores false
 gsettings set org.gnome.shell.extensions.system-monitor cpu-iowait-color '#${THEME_COLOR_HOTHOT_HEX}'
 gsettings set org.gnome.shell.extensions.system-monitor cpu-nice-color '#${THEME_COLOR_HOTHOT_HEX}'
@@ -696,7 +696,7 @@ gsettings set org.gnome.shell.extensions.system-monitor net-display false
 gsettings set org.gnome.shell.extensions.system-monitor net-collisions-color '#${THEME_COLOR_HOTHOT_HEX}'
 gsettings set org.gnome.shell.extensions.system-monitor net-down-color '#${THEME_COLOR_OKOKOK_HEX}'
 gsettings set org.gnome.shell.extensions.system-monitor net-downerrors-color '#${THEME_COLOR_HOTHOT_HEX}'
-gsettings set org.gnome.shell.extensions.system-monitor net-graph-width 64
+gsettings set org.gnome.shell.extensions.system-monitor net-graph-width 40
 gsettings set org.gnome.shell.extensions.system-monitor net-refresh-time 1500
 gsettings set org.gnome.shell.extensions.system-monitor net-show-menu false
 gsettings set org.gnome.shell.extensions.system-monitor net-show-text false

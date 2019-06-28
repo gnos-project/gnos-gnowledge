@@ -644,6 +644,20 @@ EOF
 #!/bin/sh
 export QT_SCREEN_SCALE_FACTORS="2;1;1"
 EOF
+
+    # GS extensions
+    sys::Write <<EOF --append "$POSTINST_USER_START_SCRIPT"
+gsettings set org.gnome.shell.extensions.system-monitor cpu-graph-width 80
+gsettings set org.gnome.shell.extensions.system-monitor net-graph-width 80
+gsettings set org.gnome.shell.extensions.system-monitor memory-graph-width 12
+gsettings set org.gnome.shell.extensions.system-monitor swap-graph-width 12
+gsettings set org.gnome.shell.extensions.system-monitor thermal-graph-width 12
+
+gsettings set org.gnome.shell.extensions.netspeed label-size 68
+gsettings set org.gnome.shell.extensions.netspeed unit-label-size 49
+gsettings set org.gnome.shell.extensions.netspeed menu-label-size 180
+
+EOF
 }
 
 
