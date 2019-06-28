@@ -1226,12 +1226,11 @@ EOF
     while [[ $retry -le 5 ]] && [[ "$processingCount" -ne 0 ]] ; do
         gui::XvfbXfwmRunClose 90 /opt/sublime_text/sublime_text -w
         sys::JqInline '.ignored_packages |= ["Markdown","Vintage"]' "$userPackages/Preferences.sublime-settings"
-# cat "$userPackages/Package Control.sublime-settings" # DBG
+cat "$userPackages/Package Control.sublime-settings" # DBG
         retry=$(( $retry + 1 ))
         processingCount=$(
-              sed -E 's#^\s*//.*##' \
-                "$userPackages/Package Control.sublime-settings" \
-            | sys::Jq '.in_process_packages|length'
+          sed -E 's#^\s*//.*##' "$userPackages/Package Control.sublime-settings" \
+        | sys::Jq '.in_process_packages|length'
         )
     done
 
