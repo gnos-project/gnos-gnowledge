@@ -236,7 +236,7 @@ EOF
 }
 
 
-gui::HideApps () # $1:DESKTOP
+gui::HideApps () # $*:DESKTOP
 {
     local name
     for i in $* ; do
@@ -265,7 +265,7 @@ gui::SetAppIcon () # $1:DESKTOP $2:ICON-NAME
     gui::SetAppProp "$1" Icon "$2"
 }
 
-gui::SetAppName () # $1:DESKTOP $2:ICON-NAME
+gui::SetAppName () # $1:DESKTOP $2:NAME
 {
     gui::SetAppProp "$1" Name "$2"
 }

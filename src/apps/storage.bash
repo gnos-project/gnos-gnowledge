@@ -11,7 +11,7 @@ PACKAGES_STORAGE="
     app::Sirikali
     app::Zulucrypt
     "
-    # app::UsbThumb
+    # TODO app::UsbThumb
 
 
 
