@@ -1131,9 +1131,6 @@ EOF
     # cups
     gui::AddSystemdSwitch "cups" "cups.socket cups.service" 2
 
-    # packagekit
-    gui::AddSystemdSwitch "packagekit" "packagekit.service packagekit-offline-update.service" 2
-
     # sanoid
        [[ -e /lib/systemd/system/sanoid.service ]] \
     && gui::AddSystemdSwitch "sanoid" "sanoid.service sanoid.timer" 2

@@ -118,6 +118,11 @@ app::Software ()
     gui::AddAppFolder Software org.gnome.Software
     gui::DisableSearchProvider org.gnome.Software
 
+    # Disable packagekit
+    systemctl mask packagekit.service
+    systemctl mask packagekit-offline-update.service
+    gui::AddSystemdSwitch "packagekit" "packagekit.service packagekit-offline-update.service" 2
+
     RegisterPostInstall post::Software 50
 }
 
