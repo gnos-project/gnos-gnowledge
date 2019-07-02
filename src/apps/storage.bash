@@ -67,7 +67,8 @@ app::Gsmartcontrol ()
 
 app::Sirikali ()
 {
-    Meta --desc "Encrypted folders"
+    Meta --desc "Encrypted folders" \
+         --no-default true
 
     if [[ "$UBUNTU_RELEASE" == "xenial" ]] ; then
         apt::AddSource sirikali \
@@ -89,7 +90,8 @@ app::Sirikali ()
 
 app::Zulucrypt ()
 {
-    Meta --desc "Encrypted devices"
+    Meta --desc "Encrypted devices" \
+         --no-default true
 
     if [[ "$UBUNTU_RELEASE" == "xenial" ]] ; then
         # ALT https://github.com/mhogomchungu/zuluCrypt/releases/download/5.1.0/zuluCrypt-5.1.0-ubuntu-16.04-Xenial_Xerus.tar.xz

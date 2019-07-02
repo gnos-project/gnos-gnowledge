@@ -34,7 +34,8 @@ app::Spotify_NONFREE ()
 
 app::Headset ()
 {
-    Meta --desc "Youtube music player"
+    Meta --desc "Youtube music player" \
+         --no-default true
 
     apt::AddSource --force-name headset \
         "[arch=amd64] http://headsetapp.co/headset-electron/debian" \

@@ -216,7 +216,8 @@ EOF
 
 app::Nitroshare ()
 {
-    Meta --desc "Lan share"
+    Meta --desc "Lan share" \
+         --no-default true
 
     if [[ "$UBUNTU_RELEASE" == "xenial" ]] ; then
         apt::AddPpaPackages george-edison55/nitroshare nitroshare

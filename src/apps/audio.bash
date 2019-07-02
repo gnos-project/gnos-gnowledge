@@ -142,7 +142,8 @@ app::Ardour ()
 
 app::Pulseeffects ()
 {
-    Meta --desc "Audio equalizer"
+    Meta --desc "Audio equalizer" \
+         --no-default true
 
     InstallKxStudioRepo
 

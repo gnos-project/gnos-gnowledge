@@ -1319,7 +1319,8 @@ cat "$userPackages/Package Control.sublime-settings" # DBG
 
 app::SublimeMerge_NONFREE ()
 {
-    Meta --desc "Git client"
+    Meta --desc "Git client" \
+         --no-default true
 
     apt::AddRemotePackages \
         https://download.sublimetext.com/sublime-merge_build-1111_amd64.deb

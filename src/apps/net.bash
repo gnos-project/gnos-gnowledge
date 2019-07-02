@@ -37,7 +37,8 @@ app::Zenmap ()
 
 app::Synergy ()
 {
-    Meta --desc "Virtual KVM"
+    Meta --desc "Virtual KVM" \
+         --no-default true
 
     if [[ "$UBUNTU_RELEASE" == "xenial" ]] ; then
 

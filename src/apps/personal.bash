@@ -52,7 +52,9 @@ EOF
 
 app::Qownnotes ()
 {
-    Meta --desc "Markdown notepad"
+    Meta --desc "Markdown notepad" \
+         --no-default true
+
     apt::AddPpaPackages pbek/qownnotes qownnotes
 
     gui::AddAppFolder Personal PBE.QOwnNotes
