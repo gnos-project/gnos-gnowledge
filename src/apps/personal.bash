@@ -237,7 +237,7 @@ app::Android ()
         # apt::AddPackages kdeconnect
         # gui::AddShellExtensionsById 1272
 
-        apt::AddPpaPackages samoilov-lex/aftl-stable  android-file-transfer
+        apt::AddPpaPackages samoilov-lex/aftl-stable  android-file-transfer aft-mtp-cli
         gui::AddAppFolder Transfer android-file-transfer
     else
         # gsconnect
@@ -275,7 +275,7 @@ EOF
 
 
         # Android MTP
-        apt::AddPpaPackages --release xenial samoilov-lex/aftl-stable  android-file-transfer
+        apt::AddPpaPackages --release xenial samoilov-lex/aftl-stable  android-file-transfer aft-mtp-cli
         gui::AddAppFolder Personal android-file-transfer
         gui::SetAppName android-file-transfer "Android MTP"
 
