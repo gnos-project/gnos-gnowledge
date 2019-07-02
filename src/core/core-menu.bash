@@ -877,11 +877,11 @@ MenuExtend ()
     MenuHardware
     MenuDistro
 
+    MenuReview
+
     if [[ "$( type -t MenuAdditional 2>/dev/null )" == "function" ]] ; then
         MenuAdditional
     fi
-
-    MenuReview
 
     sys::GetVarsDefinitions $CORE_PREF \
         >./${HOST_HOSTNAME}_$(date +%Y%m%d%H%M%S).$PRODUCT_NAME.conf
