@@ -711,12 +711,14 @@ gsettings set org.gnome.shell.extensions.system-monitor disk-show-menu false
 gsettings set org.gnome.shell.extensions.system-monitor disk-usage-style 'bar'
 gsettings set org.gnome.shell.extensions.system-monitor fan-display false
 gsettings set org.gnome.shell.extensions.system-monitor freq-display false
-gsettings set org.gnome.shell.extensions.system-monitor memory-display false
 gsettings set org.gnome.shell.extensions.system-monitor thermal-display false
 gsettings set org.gnome.shell.extensions.system-monitor thermal-sensor-file '/dev/null'
 gsettings set org.gnome.shell.extensions.system-monitor thermal-graph-width 6
 EOF
-
+       [[ -n $SWAP_PARTITION ]] \
+    && sys::Write <<EOF --append "$POSTINST_USER_START_SCRIPT"
+gsettings set org.gnome.shell.extensions.system-monitor swap-display true
+EOF
 
     # EXT: Dash to panel
     gui::AddShellExtensionsById 1160
