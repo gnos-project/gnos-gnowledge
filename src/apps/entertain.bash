@@ -183,30 +183,34 @@ app::Freetuxtv ()
     Meta --desc "TV player" \
          --no-default true
 
-    if [[ "$UBUNTU_RELEASE" == "xenial" ]] ; then
-        apt::AddPpaPackages freetuxtv/freetuxtv-dev freetuxtv
-    else
-        # BUG BIONIC libcurl3/4 conflict
-        # apt::AddPpaPackages --release xenial freetuxtv/freetuxtv-dev freetuxtv # libcurl issue
-        # WORKAROUND => BUILD :(
-        local freetuxtv_build_deps="intltool libgtk2.0-dev libgtk-3-dev
-            libvlc-dev libnotify-dev libdbus-glib-1-dev"
-        apt::AddPackages $freetuxtv_build_deps libcurl3-dev libpng-dev
-        local tmpdir=$( mktemp -d )
-        net::DownloadGithubLatestRelease freetuxtv/freetuxtv \
-            '/freetuxtv-.*\\.tar\\.gz$' \
-            "$tmpdir/freetuxtv.tgz"
-        pushd "$tmpdir"
-        tar xzvf freetuxtv.tgz
-        sys::Chk
-        pushd freetuxtv-*
-        ./configure --prefix=/usr/local
-        make install
-        popd ; popd
-        rm -rf "$tmpdir"
-        apt::RemovePackages $freetuxtv_build_deps
-    fi
+    apt::AddPpaPackages freetuxtv/freetuxtv freetuxtv
     gui::AddAppFolder Entertainment freetuxtv
+
+    # OLD
+    # if [[ "$UBUNTU_RELEASE" == "xenial" ]] ; then
+    #     apt::AddPpaPackages freetuxtv/freetuxtv-dev freetuxtv
+    # else
+    #     # BUG BIONIC libcurl3/4 conflict
+    #     # apt::AddPpaPackages --release xenial freetuxtv/freetuxtv-dev freetuxtv # libcurl issue
+    #     # WORKAROUND => BUILD :(
+    #     local freetuxtv_build_deps="intltool libgtk2.0-dev libgtk-3-dev
+    #         libvlc-dev libnotify-dev libdbus-glib-1-dev"
+    #     apt::AddPackages $freetuxtv_build_deps libcurl3-dev libpng-dev
+    #     local tmpdir=$( mktemp -d )
+    #     net::DownloadGithubLatestRelease freetuxtv/freetuxtv \
+    #         '/freetuxtv-.*\\.tar\\.gz$' \
+    #         "$tmpdir/freetuxtv.tgz"
+    #     pushd "$tmpdir"
+    #     tar xzvf freetuxtv.tgz
+    #     sys::Chk
+    #     pushd freetuxtv-*
+    #     ./configure --prefix=/usr/local
+    #     make install
+    #     popd ; popd
+    #     rm -rf "$tmpdir"
+    #     apt::RemovePackages $freetuxtv_build_deps
+    # fi
+    # gui::AddAppFolder Entertainment freetuxtv
 }
 
 
