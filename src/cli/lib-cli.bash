@@ -448,8 +448,8 @@ cli::Node () # node.js + nvm + npm
     [[ -d "$HOME/.nvm" ]] && return
 
     # WORKAROUND
-    cp $HOME/.bashrc{,.SAVE}
-    echo '' >$HOME/.bashrc
+    cp -p $HOME/.bashrc{,.SAVE}
+    sys::Write $HOME/.bashrc <<<""
 
       net::Download https://raw.githubusercontent.com/creationix/nvm/v0.33.8/install.sh \
     | sudo --set-home -u \#1000 bash
@@ -590,9 +590,8 @@ cli::Golang ()
     [[ -d $HOME/.gvm ]] && return
 
     # WORKAROUND
-    cp $HOME/.bashrc{,.SAVE}
-    echo '' >$HOME/.bashrc
-    chown -hR 1000:1000 $HOME/.bashrc{,.SAVE}
+    cp -p $HOME/.bashrc{,.SAVE}
+    sys::Write $HOME/.bashrc <<<""
 
     apt::AddPackages git bison
 
@@ -2223,7 +2222,9 @@ cli::Sugar ()
     popd
 
     # bash Completion
-    sys::Write <<'EOF' $HOME/.bashrc.d/completion.gnos-sugar 1000:1000
+    local bashrc=$HOME/.bashrc
+    [[ -d "$HOME/.bashrc.d" ]] && bashrc=$HOME/.bashrc.d/completion.gnos-sugar
+    sys::Write --append <<'EOF' "$bashrc"
 complete -F _filedir_xspec i
 complete -F _filedir_xspec o
 EOF
