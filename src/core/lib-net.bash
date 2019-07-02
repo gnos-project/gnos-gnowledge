@@ -117,6 +117,8 @@ net::DownloadGithubFiles () # [ --branch NAME ] $1:NAME/REPO $2:DEST $*:TARGETS
         sys::Chk
         cp -R "$tempdir/${repo#*/}-$branch/." "$dst"
         sys::Chk
+        chown --preserve-root --changes --recursive --no-dereference --reference="$dst/" "$dst"/{*,.[!.]*,..?*}
+        # sys::Chk
     else
         for i in "$@"; do
             if [[ $i =~ /$ ]] ; then
@@ -124,14 +126,14 @@ net::DownloadGithubFiles () # [ --branch NAME ] $1:NAME/REPO $2:DEST $*:TARGETS
                 sys::Chk
                 cp -R "$tempdir/${repo#*/}-$branch/$i" "$dst"
                 sys::Chk
-                chown --preserve-root --changes --no-dereference --reference="$dst/" "$dst/$( basename "$i" )"
+                chown --preserve-root --changes --recursive --no-dereference --reference="$dst/" "$dst/$( basename "$i" )"
                 sys::Chk
             else
                 unzip $tempdir/$branch.zip "${repo#*/}-$branch/${i}" -d "$tempdir"
                 sys::Chk
                 cp "$tempdir/${repo#*/}-$branch/$i" "$dst"
                 sys::Chk
-                chown --preserve-root --changes --no-dereference --reference="$( dirname "$dst" )" "$dst"
+                chown --preserve-root --changes --recursive --no-dereference --reference="$( dirname "$dst" )" "$dst"
                 sys::Chk
             fi
         done
