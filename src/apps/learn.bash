@@ -186,12 +186,12 @@ app::Geogebra ()
          --no-default true
 
     # DEV deb SRC sometimes broken
-    # apt::AddSource --force-name geogebra \
-    #     "http://www.geogebra.net/linux/" \
-    #     "stable main" \
-    #     "https://static.geogebra.org/linux/office@geogebra.org.gpg.key"
-    # apt::AddPackages geogebra-classic
-    apt::AddRemotePackages "http://www.geogebra.org/download/deb.php?arch=amd64&ver=6"
+    apt::AddSource --force-name geogebra \
+        "http://www.geogebra.net/linux/" \
+        "stable main" \
+        "https://static.geogebra.org/linux/office@geogebra.org.gpg.key"
+    apt::AddPackages geogebra-classic
+    # ALT apt::AddRemotePackages "http://www.geogebra.org/download/deb.php?arch=amd64&ver=6"
     gui::SetAppIcon geogebra-classic geogebra
     gui::AddAppFolder Learn geogebra-classic
 }
