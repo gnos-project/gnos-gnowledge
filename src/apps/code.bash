@@ -493,7 +493,9 @@ EOF
     chown -hR 1000:1000 "$konsoleProfilesPath" "$HOME/.local/share/kxmlgui5"
 
     # Man function opens `man` in new tab
-    sys::Write --append <<'EOF' "$HOME/.bashrc.d/56_functions" 1000:1000 700
+    local bashrc=$HOME/.bashrc
+    [[ -d "$HOME/.bashrc.d" ]] && bashrc=$HOME/.bashrc.d/gvm
+    sys::Write --append <<'EOF' "$bashrc"
 Man ()
 {
     local prefix
