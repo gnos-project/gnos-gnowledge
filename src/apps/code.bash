@@ -635,7 +635,7 @@ app::SublimeText_NONFREE ()
         "SyncedSideBar",
 
     // Text features
-        "BracketHighlighter",
+// BROKEN        "BracketHighlighter",
         "Color Highlighter",
         "WordHighlight",
         "AlignTab",
@@ -647,18 +647,18 @@ app::SublimeText_NONFREE ()
         "Markmon real-time markdown preview",
         "MarkdownEditing",
         "Table Editor",
-        "HexViewer",
+// BROKEN        "HexViewer",
         "INI",
         "Pretty JSON",
         "Pretty YAML",
         "IndentX",
-        "GithubEmoji",
 
     // Devel features
         "EditorConfig",
         "FileDiffs",
         "Function Name Display",
         "GitSavvy",
+        "GithubEmoji",
         "SublimeCodeIntel",
         "SublimeREPL",
         "Zeal",
@@ -669,7 +669,7 @@ app::SublimeText_NONFREE ()
         "SublimeLinter-mdl",
         "SublimeLinter-html-tidy",
         "SublimeLinter-json",
-        "SublimeLinter-pyyaml",
+        "SublimeLinter-contrib-yamllint",
 
     // Devel Linting: languages
         "SublimeLinter-golint",
@@ -744,7 +744,7 @@ EOF
 
     # DEPS Linters
     gog::Install golang.org/x/tools/cmd/gotype golang.org/x/lint/golint # github.com/golang/lint/golint
-    pip::Install pyyaml pylint sqlparse jsbeautifier
+    pip::Install yamllint pylint sqlparse jsbeautifier
     gem::Install mdl scss_lint sqlint
     npm::Install eslint csslint
     apt::AddPpaPackages ondrej/php tidy
@@ -1205,26 +1205,70 @@ EOF
 
 
     # DEV: Run several times to download & install all packages
-    chmod 777 /dev/shm # WORKAROUND: "Unable to init shm"
+    apt::AddPackages xfwm4
+
+    # WORKAROUND: "Unable to init shm"
+    chmod 777 /dev/shm
 
     # WORKAROUND: blocking update prompt prevents packages installation
     sys::Write --append <<'EOF' /etc/hosts
 127.0.0.1 sublimetext.com www.sublimetext.com download.sublimetext.com sublimehq.com telemetry.sublimehq.com license.sublimehq.com #DISABLE_SUBLIME_UPDATES
 EOF
 
-    apt::AddPackages xfwm4
+    # WORKAROUND: Package Control issues
+    # TIP: missing deps repo https://github.com/wbond/package_control_channel/blob/master/repository/dependencies.json
 
-    # First run
+    # WORKAROUND: missing dep pyyaml
+    # net::DownloadGithubFiles packagecontrol/pyyaml \
+    #     "$HOME/.config/sublime-text-3/Packages/pyyaml"/
+    # # DOC : https://packagecontrol.io/docs/dependencies
+    # sys::Touch "$HOME/.config/sublime-text-3/Packages/pyyaml/.sublime-package"
+
+    # # WORKAROUND: missing dep numpy
+    # net::DownloadGithubFiles komsit37/sublime-numpy \
+    #     "$HOME/.config/sublime-text-3/Packages/numpy"/
+    # sys::Touch "$HOME/.config/sublime-text-3/Packages/numpy/.sublime-package"
+
+    # # WORKAROUND: https://github.com/wbond/package_control/issues/1430
+    # # HARDCODED: missing python-jinja2
+    # local tmpzip=$( mktemp )
+    # local tmpdir=$( mktemp -d )
+    # net::Download \
+    #     "https://bitbucket.org/teddy_beer_maniac/sublime-text-dependency-jinja2/get/0f764ff20f33.zip" \
+    #     "$tmpzip"
+    # unzip "$tmpzip" -d "$tmpdir"
+    # sys::Chk
+    # sys::Mkdir "$HOME/.config/sublime-text-3/Packages/python-jinja2"
+    # cp -R "$tmpzip/teddy_beer_maniac-sublime-text-dependency-jinja2-0f764ff20f33/all" \
+    #     "$HOME/.config/sublime-text-3/Packages/python-jinja2"
+    # chown -hR 1000:1000 "$HOME/.config/sublime-text-3/Packages/python-jinja2"
+    # rm -rf "$tmpdir" "$tmpzip"
+    # # HARDCODED: missing markupsafe
+    # local tmpzip=$( mktemp )
+    # local tmpdir=$( mktemp -d )
+    # net::Download \
+    #     "https://bitbucket.org/teddy_beer_maniac/sublime-text-dependency-markupsafe/get/ae155c4a5704.zip" \
+    #     "$tmpzip"
+    # unzip "$tmpzip" -d "$tmpdir"
+    # sys::Chk
+    # sys::Mkdir "$HOME/.config/sublime-text-3/Packages/markupsafe"
+    # cp -R "$tmpzip/teddy_beer_maniac-sublime-text-dependency-markupsafe-ae155c4a5704/all" \
+    #     "$HOME/.config/sublime-text-3/Packages/markupsafe"
+    # chown -hR 1000:1000 "$HOME/.config/sublime-text-3/Packages/markupsafe"
+    # rm -rf "$tmpdir" "$tmpzip"
+
+    # First run for deps
 # cat "$userPackages/Package Control.sublime-settings" # DBG
-    gui::XvfbXfwmRunClose 90 /opt/sublime_text/sublime_text -w
-# cat "$userPackages/Package Control.sublime-settings" # DBG
+    gui::XvfbXfwmRunClose 30 /opt/sublime_text/sublime_text -w
     sys::JqInline '.ignored_packages |= ["Markdown","Vintage"]' "$userPackages/Preferences.sublime-settings"
-# cat "$userPackages/Package Control.sublime-settings" # DBG
+sys::Jq '.ignored_packages' "$userPackages/Preferences.sublime-settings" # DBG
+cat "$userPackages/Package Control.sublime-settings" # DBG
 
-    # DEV LOOP package manager runs
+    # Multiple runs for package manager
     local retry=0 processingCount=1
     while [[ $retry -le 5 ]] && [[ "$processingCount" -ne 0 ]] ; do
         gui::XvfbXfwmRunClose 90 /opt/sublime_text/sublime_text -w
+sys::Jq '.ignored_packages' "$userPackages/Preferences.sublime-settings" # DBG
         sys::JqInline '.ignored_packages |= ["Markdown","Vintage"]' "$userPackages/Preferences.sublime-settings"
 cat "$userPackages/Package Control.sublime-settings" # DBG
         retry=$(( $retry + 1 ))
