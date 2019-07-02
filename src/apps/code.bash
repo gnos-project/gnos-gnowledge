@@ -1774,8 +1774,8 @@ app::Ghidra ()
     apt::AddPackages openjdk-11-jdk-headless
 
     # DEV: HARDCODED version
-    local vers=9.0.2
-    local date=20190403
+    local vers=9.0.4
+    local date=20190516
 
     # TODO Scrap
     # local base="https://www.ghidra-sre.org"
