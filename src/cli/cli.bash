@@ -231,8 +231,9 @@ EOF
     else
         apt::AddPackages flatpak
     fi
-    flatpak remote-add --if-not-exists gnome https://sdk.gnome.org/gnome.flatpakrepo
-    sys::Chk
+    # REMOVED
+    # flatpak remote-add --if-not-exists gnome https://sdk.gnome.org/gnome.flatpakrepo
+    # sys::Chk
     flatpak remote-add flathub https://flathub.org/repo/flathub.flatpakrepo
     sys::Chk
     # flatpak update
