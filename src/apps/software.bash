@@ -118,6 +118,10 @@ app::Software ()
     gui::AddAppFolder Software org.gnome.Software
     gui::DisableSearchProvider org.gnome.Software
 
+    # Disable service
+    mv /etc/xdg/autostart/gnome-software-service.desktop{,.ORIG}
+
+
     # Disable packagekit
     systemctl mask packagekit.service
     systemctl mask packagekit-offline-update.service
@@ -130,6 +134,8 @@ app::Software ()
 
 post::Software ()
 {
+    local services="packagekit.service packagekit-offline-update.service"
+    sys::StartServices $services
     sudo --set-home -u \#1000 pkcon refresh
     sys::Chk
 
@@ -138,6 +144,8 @@ post::Software ()
     sys::Chk
 
     gui::XvfbRunKill 4 gnome-software
+
+    sys::StopServices $services
 }
 
 
@@ -181,12 +189,36 @@ EOF
     sys::SedInline "s#(addToStatusArea\('AptUpdateIndicator', this)#\1, 3#" \
         /usr/share/gnome-shell/extensions/apt-update-indicator@franglais125.gmail.com/indicator.js
 
+    # update-apt: password-less apt update
+    sys::Write <<'EOF' /usr/local/bin/update-apt 0:0 755
+#!/bin/bash
+exec apt update
+EOF
+    sys::Write --append <<EOF /usr/share/polkit-1/actions/in.gnos.pkexec.update-apt.policy
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN" "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+     <action id="in.gnos.pkexec.update-apt">
+         <message>Authentication is required to run update-apt as root.</message>
+         <defaults>
+             <allow_any>yes</allow_any>
+             <allow_inactive>auth_admin</allow_inactive>
+             <allow_active>yes</allow_active>
+         </defaults>
+         <annotate key="org.freedesktop.policykit.exec.path">/usr/local/bin/update-apt</annotate>
+         <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+    </action>
+</policyconfig>
+EOF
+
     # CONFIG
     sys::Write <<'EOF' --append "$POSTINST_USER_SESSION_SCRIPT"
 gsettings set org.gnome.shell.extensions.apt-update-indicator always-visible                    false
 gsettings set org.gnome.shell.extensions.apt-update-indicator verbosity                         2
 gsettings set org.gnome.shell.extensions.apt-update-indicator update-cmd-options                'update-manager'
 gsettings set org.gnome.shell.extensions.apt-update-indicator show-count                        false
+gsettings set org.gnome.shell.extensions.apt-update-indicator use-custom-cmd                    true
+gsettings set org.gnome.shell.extensions.apt-update-indicator check-cmd-custom                  'pkexec update-apt'
 EOF
     gui::AddAptIndicatorIgnore $( apt-mark showhold )
     
