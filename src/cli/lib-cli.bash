@@ -1641,6 +1641,7 @@ set number                  " Show line numbers
 set wrap                    " Soft wrap at the window width
 set linebreak               " Break the line on words
 set textwidth=79            " Break lines at just under 80 characters
+set formatoptions-=t        " Don't insert line breaks automatically
 if exists('+colorcolumn')
   set colorcolumn=+1        " Highlight the column after `textwidth`
 endif
