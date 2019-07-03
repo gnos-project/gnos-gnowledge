@@ -193,6 +193,7 @@ app::Geogebra ()
     apt::AddPackages geogebra-classic
     # ALT apt::AddRemotePackages "http://www.geogebra.org/download/deb.php?arch=amd64&ver=6"
     gui::SetAppIcon geogebra-classic geogebra
+    gui::SetAppName geogebra-classic "Geogebra"
     gui::AddAppFolder Learn geogebra-classic
 }
 

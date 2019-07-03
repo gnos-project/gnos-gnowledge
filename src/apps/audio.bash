@@ -60,6 +60,7 @@ app::Soundconverter ()
     Meta --desc "Audio transcoder"
 
     apt::AddPackages soundconverter
+    gui::SetAppName soundconverter Converter
     gui::AddAppFolder Audio soundconverter
 
     gui::AddEditor \
@@ -86,8 +87,10 @@ app::Lmms ()
     InstallKxStudioRepo
 
     apt::AddPackages lmms tap-plugins # lmms-vst-server
+    gui::AddAppFolder Audio lmms
 
-    gui::AddAppFolder Audio lmms zynaddsubfx-jack
+    gui::AddAppFolder Audio zynaddsubfx-jack
+    gui::SetAppName zynaddsubfx-jack "ZynAddSubFx"
     gui::HideApps zynaddsubfx-alsa zynaddsubfx-oss zynaddsubfx-jack-multi
 
     # TOCHECK http://linux-sound.org/linux-vst-plugins.html
