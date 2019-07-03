@@ -503,26 +503,6 @@ EOF
     gui::AddShellExtensionsById --nodefault 1227
 
 
-    ##############
-    # WORKSPACES #
-    ##############
-
-    # EXT: Workspace Switch Wraparound
-    gui::AddShellExtensionsById 1116
-
-    # EXT: Workspace Switcher
-    gui::AddShellExtensionsByUrl \
-        "https://github.com/Tomha/gnome-shell-extension-workspace-switcher/archive/master.zip"
-    sys::Write <<EOF --append "$POSTINST_USER_SESSION_SCRIPT"
-gsettings set org.gnome.shell.extensions.workspace-switcher index 3
-gsettings set org.gnome.shell.extensions.workspace-switcher show-names false
-gsettings set org.gnome.shell.extensions.workspace-switcher click-action 'POPUP'
-gsettings set org.gnome.shell.extensions.workspace-switcher background-colour-active '#00000000'
-gsettings set org.gnome.shell.extensions.workspace-switcher padding-horizontal 5
-gsettings set org.gnome.shell.extensions.workspace-switcher border-radius 5
-gsettings set org.gnome.shell.extensions.workspace-switcher font-active "$THEME_FONT_WINDOW_NAME 9"
-EOF
-
 
     ############
     # OVERVIEW #
@@ -561,24 +541,6 @@ gsettings set org.gnome.shell.extensions.windowoverlay-icons icon-size 64
 gsettings set org.gnome.shell.extensions.windowoverlay-icons icon-horizontal-alignment 'right'
 gsettings set org.gnome.shell.extensions.windowoverlay-icons icon-vertical-alignment 'bottom'
 EOF
-
-    # EXT: applications-overview-tooltip
-    gui::AddShellExtensionsById 1071
-    sys::Write <<'EOF' --append "$POSTINST_USER_SESSION_SCRIPT"
-gsettings set org.gnome.shell.extensions.applications-overview-tooltip appdescription false
-gsettings set org.gnome.shell.extensions.applications-overview-tooltip alwaysshow false
-gsettings set org.gnome.shell.extensions.applications-overview-tooltip borders false
-gsettings set org.gnome.shell.extensions.applications-overview-tooltip hoverdelay 0
-gsettings set org.gnome.shell.extensions.applications-overview-tooltip labelhidetime 0
-gsettings set org.gnome.shell.extensions.applications-overview-tooltip labelshowtime 0
-EOF
-    sed -E -i \
-        -e 's/^(\s*background-color:) .*/\1rgba('"$THEME_COLOR_SELECT_RGB"',1);/' \
-        -e 's/^(\s*border-radius:) .*/\12px;/' \
-        -e 's/^(\s*font-weight:) .*/\1normal;/' \
-        -e 's/^(\s*font-size:) .*/\112pt;/' \
-        "/usr/share/gnome-shell/extensions/applications-overview-tooltip@RaphaelRochet/stylesheet.css"
-
 
     # EXT appfolders-manager
     gui::AddShellExtensionsById 1217
