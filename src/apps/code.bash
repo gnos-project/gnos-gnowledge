@@ -1306,12 +1306,12 @@ cat "$userPackages/Package Control.sublime-settings" # DBG
     ## DEV: Git GUI Clients: should not launch gitkraken as root
     ## DEV: Markmon real-time markdown preview: should not launch as root
     for i in \
-      "Terminal" \
-      "Git GUI Clients" \
+      "Packages/Terminal" \
+      "Packages/Git GUI Clients" \
       "Installed Packages/Markmon real-time markdown preview.sublime-package" \
     ; do
       sys::JqInline '.installed_packages|= .-["'"$( basename "$i" .sublime-package )"'"]' "/root/.config/sublime-text-3/Packages/User/Package Control.sublime-settings"
-      rm -rfv "/root/.config/sublime-text-3/Packages/$i"
+      rm -rfv "/root/.config/sublime-text-3/$i"
     done
 }
 
