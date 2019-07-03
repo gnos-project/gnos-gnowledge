@@ -7,7 +7,7 @@ Init ()
 {
     ## BASE
     PRODUCT_NAME=gnos
-    PRODUCT_VERSION=19.06.2
+    PRODUCT_VERSION=19.07.1
     INSTALL_VERSION=$PRODUCT_VERSION
     INSTALL_DATE=$( date +%Y%m%d )
     TARGET=/mnt/target
